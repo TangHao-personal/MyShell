@@ -1,5 +1,6 @@
+CC = gcc
 shell: shell.c
-	gcc $< -o $@
+	$(CC) $< -o $@
 
 .PHONY: clean
 
