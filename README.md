@@ -17,5 +17,6 @@ Support basic funtion:
 + build-in command
   + cd
   + pwd
+  + exit
 
 
