@@ -87,6 +87,7 @@ void cd(command * cmd)
 
 void execute(command *cmd)
 {
+	if(cmd->op == 0) exit(0);
 	pid_t pid;
 	if((pid = fork()) < 0) perror("fork"), exit(1);
 	if(pid == 0)
@@ -165,6 +166,7 @@ void parser(command *cmd)
 		}
 	}
 	cmd->argv[cmd->argc] = NULL;
+	if(strcmp(cmd->argv[0], "exit") == 0) {cmd->op = 0; return;}
 	if(strcmp(cmd->argv[0], "pwd") == 0) {cmd->op = 4; cmd->pos = 0; return;}
 	if(strcmp(cmd->argv[0], "cd") == 0) {cmd->op = 5; cmd->pos = 0; return;}
 	for(int i = 0; i < cmd->argc; i++)
@@ -192,7 +194,7 @@ void check(command *cmd)
 	}
 	if(pipe == 0)
 	{
-		printf("executing one command...\n");
+		printf("executing single command...\n");
 		parser(cmd);
 		execute(cmd);
 	}

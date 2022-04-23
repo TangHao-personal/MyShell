@@ -1,6 +1,8 @@
 CC = gcc
+Warn = -Wall
+
 shell: shell.c
-	$(CC) $< -o $@
+	$(CC) $(Warn) $< -o $@
 
 .PHONY: clean
 
