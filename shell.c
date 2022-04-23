@@ -19,15 +19,15 @@ typedef struct command
 
 void normal(command *cmd)
 {
-	printf("buf: %s, argv[1]: %s", cmd->buf, cmd->argv[0]);
+	printf("executing normal\n");
 	execvp(cmd->buf, cmd->argv);
-	printf("problem in normal\n");
 	perror("exec");
 	exit(1);
 }
 
 void redirect_out(command *cmd)
 {	
+	printf("executing redirect_out\n");
 	if(cmd->argv[cmd->pos + 1] == NULL) perror("command > [option]"), exit(1);
 	cmd->argv[cmd->pos] = NULL;
 	int fd;
@@ -42,6 +42,7 @@ void redirect_out(command *cmd)
 
 void redirect_in(command *cmd)
 {
+	printf("executing redirect_in\n");
 	if(cmd->argv[cmd->pos + 1] == NULL) perror("command < [option]"), exit(1);
 	cmd->argv[cmd->pos] = NULL;
 	int fd;
@@ -56,6 +57,7 @@ void redirect_in(command *cmd)
 
 void redirect_append(command *cmd)
 {
+	printf("executing redirect_append\n");
 	if(cmd->argv[cmd->pos + 1] == NULL) perror("command >> [option]"), exit(1);
 	cmd->argv[cmd->pos] = NULL;
 	int fd;
@@ -63,9 +65,24 @@ void redirect_append(command *cmd)
 	dup2(fd, STDOUT_FILENO);
 	close(fd);
 	execvp(cmd->buf, cmd->argv);
-	printf("problem in redirect_append\n");
 	perror("exec");
 	exit(1);
+}
+
+void pwd()
+{
+	printf("executing pwd\n");
+	char buf[80];
+    getcwd(buf, sizeof(buf));
+	printf("%s\n", buf);
+}
+
+void cd(command * cmd)
+{
+	printf("executing cd\n");
+	if(cmd->argv[cmd->pos + 1] == NULL) perror("cd [option]"), exit(1);
+	chdir(cmd->argv[cmd->pos + 1]);
+	pwd();
 }
 
 void execute(command *cmd)
@@ -76,23 +93,30 @@ void execute(command *cmd)
 	{
 		switch(cmd->op)
 		{
-			case 1: redirect_in(cmd);
-			case 2: redirect_out(cmd);
-			case 3: redirect_append(cmd);
-			default: normal(cmd);
+			case 1: redirect_in(cmd);break;
+			case 2: redirect_out(cmd);break;
+			case 3: redirect_append(cmd);break;
+			case 4: pwd();break;
+			case 5: cd(cmd);break;
+			default: normal(cmd);break;
 		}
 	}
-	wait(NULL);
+	if(pid > 0){
+		wait(NULL);
+		exit(1);
+	}
 }
 
 void pipe_exec(command *cmd)
 {
 	switch(cmd->op)
 	{
-		case 1: redirect_in(cmd);
-		case 2: redirect_out(cmd);
-		case 3: redirect_append(cmd);
-		default: normal(cmd);
+		case 1: redirect_in(cmd);break;
+		case 2: redirect_out(cmd);break;
+		case 3: redirect_append(cmd);break;
+		case 4: pwd();break;
+		case 5: cd(cmd);break;
+		default: normal(cmd);break;
 	}
 }
 
@@ -141,11 +165,13 @@ void parser(command *cmd)
 		}
 	}
 	cmd->argv[cmd->argc] = NULL;
+	if(strcmp(cmd->argv[0], "pwd") == 0) {cmd->op = 4; cmd->pos = 0; return;}
+	if(strcmp(cmd->argv[0], "cd") == 0) {cmd->op = 5; cmd->pos = 0; return;}
 	for(int i = 0; i < cmd->argc; i++)
 	{
-		if(strcmp(cmd->argv[i], "<") == 0) {cmd->op = 1, cmd->pos = i;}
-		else if(strcmp(cmd->argv[i], ">") == 0) {cmd->op = 2; cmd->pos = i;}
-		else if(strcmp(cmd->argv[i], ">>") == 0) {cmd->op = 3; cmd->pos = i;}
+		if(strcmp(cmd->argv[i], "<") == 0) {cmd->op = 1, cmd->pos = i;break;}
+		else if(strcmp(cmd->argv[i], ">") == 0) {cmd->op = 2; cmd->pos = i;break;}
+		else if(strcmp(cmd->argv[i], ">>") == 0) {cmd->op = 3; cmd->pos = i;break;}
 	}
 }
 
@@ -160,16 +186,19 @@ void check(command *cmd)
 			cmd->buf[i++] = 0;
 			while(isspace(cmd->buf[i])) i++;
 			strcpy(cmd_next->buf, cmd->buf + i);		
-			pipe++;
+			pipe = 1;
+			break;
 		}
 	}
 	if(pipe == 0)
 	{
+		printf("executing one command...\n");
 		parser(cmd);
 		execute(cmd);
 	}
 	else
 	{
+		printf("executing pipe command...\n");
 		parser(cmd);
 		parser(cmd_next);
 		pid_t pid;
@@ -185,7 +214,6 @@ void check(command *cmd)
 	}
 	return;
 }
-
 
 int main()
 {
